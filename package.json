@@ -9,8 +9,10 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@types/d3": "^5.0.0",
     "d3": "^5.1.0",
+    "emotion": "^9.1.2",
+    "react": "^16.3.2",
+    "react-dom": "^16.3.2",
     "topojson": "^3.0.2"
   },
   "devDependencies": {
