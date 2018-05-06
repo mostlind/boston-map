@@ -68,7 +68,7 @@ class Map extends React.Component {
 
     function zoomed() {
       const { x, y, k } = event.transform;
-      map.attr("transform", `translate(${x}, ${y})scale(${k})`);
+      map.style("transform", `translate(${x}px, ${y}px)scale(${k})`);
     }
 
     const zoomBehavior = zoom()
