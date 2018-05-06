@@ -3,6 +3,17 @@ body {
   margin: 0;
 }
 
+:root {
+  /* font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; */
+  /* font-family: "Franklin Gothic Medium", "Arial Narrow", Arial, sans-serif; */
+  /* font-family: "Lucida Sans", "Lucida Sans Regular", "Lucida Grande", "Lucida Sans Unicode", Geneva, Verdana, sans-serif; */
+  font-family: "Gill Sans", "Gill Sans MT", Calibri, "Trebuchet MS", sans-serif;
+}
+
+body {
+  overflow: hidden;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -24,21 +35,20 @@ p {
 .map-info {
   position: absolute;
   right: 0;
-  top: 0;
-  overflow-y: auto;
+  top: 100%;
+  /* overflow-y: hidden; */
 
-  height: 100%;
   width: 100%;
   max-width: 500px;
   outline: 1px solid red;
-  pointer-events: none;
+  /* pointer-events: none; */
   -webkit-overflow-scrolling: touch;
 }
 
 .map-info > div {
+  transition: transform 300ms ease-out;
   border-top-left-radius: 10px 10px;
   border-top-right-radius: 10px 10px;
   background: white;
-  margin-top: 75vh;
   pointer-events: initial;
 }

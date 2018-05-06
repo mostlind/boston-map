@@ -1,7 +1,8 @@
 import * as React from "react";
 
 import { geoMercator, geoPath, geoCentroid, geoCircle } from "d3-geo";
-import { select, mouse } from "d3-selection";
+import { select, mouse, event } from "d3-selection";
+import { zoom } from "d3-zoom";
 import { hsl } from "d3-color";
 import "d3-transition";
 import { feature } from "topojson";
@@ -64,6 +65,19 @@ class Map extends React.Component {
     const map = select(ref)
       .attr("width", this.width)
       .attr("height", this.height);
+
+    function zoomed() {
+      const { x, y, k } = event.transform;
+      map.attr("transform", `translate(${x}, ${y})scale(${k})`);
+    }
+
+    const zoomBehavior = zoom()
+      .scaleExtent([1, 4])
+      .on("zoom", zoomed);
+
+    console.log(zoomBehavior);
+
+    map.call(zoomBehavior);
 
     this.drawMapLayer(map, path);
     this.drawWaterLayer(map, path);
@@ -158,10 +172,12 @@ class Map extends React.Component {
       .attr("stroke-width", 3)
       .style("cursor", "pointer")
       .on("click", d => {
+        console.log(d);
         this.setState({
           info: {
             name: d.properties.STATION,
-            description
+            description,
+            coords: d.geometry.coordinates
           }
         });
       });
