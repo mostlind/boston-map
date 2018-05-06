@@ -47,14 +47,14 @@ class Map extends React.Component {
       this.height = bbox.height;
       this.width = bbox.width;
 
-      this.drawMap(this.mapRef.current);
+      this.setupMap(this.mapRef.current);
     };
 
     window.addEventListener("resize", createMap);
     createMap();
   }
 
-  drawMap(ref) {
+  setupMap(ref) {
     const projection = geoMercator()
       .scale(450000)
       .center(center)
@@ -62,125 +62,150 @@ class Map extends React.Component {
 
     const path = geoPath().projection(projection);
 
+    // set width and height
     const map = select(ref)
       .attr("width", this.width)
       .attr("height", this.height);
 
-    function zoomed() {
-      const { x, y, k } = event.transform;
-      map.style("transform", `translate(${x}px, ${y}px)scale(${k})`);
-    }
+    const ctx = ref.getContext("2d");
 
     const zoomBehavior = zoom()
-      .scaleExtent([1, 4])
-      .on("zoom", zoomed);
-
-    console.log(zoomBehavior);
+      .scaleExtent([0.9, 4])
+      .on("zoom", this.getZoomCallback(ctx, path, projection));
 
     map.call(zoomBehavior);
 
-    this.drawMapLayer(map, path);
-    this.drawWaterLayer(map, path);
-    this.drawRoadLayer(map, path);
-    this.drawTransportLayer(map, path, projection);
-    this.drawPoiLayer(map, path, projection);
+    path.context(ctx);
+
+    this.drawMap(ctx, path, projection);
   }
 
-  drawMapLayer(map, path) {
-    const mapLayer = map.append("g").classed("map-layer", true);
-    mapLayer
-      .selectAll("path")
-      .data(
-        feature(topoData.massPoly, topoData.massPoly.objects.massPoly).features
-      )
-      .enter()
-      .append("path")
-      .attr("d", path)
-      .style("stroke", "#777")
-      .style("stroke-width", 1)
-      .attr("vector-effect", "non-scaling-stroke")
-      .style("fill", "#ddd");
+  getZoomCallback(ctx, path, projection) {
+    return () => {
+      const { x, y, k } = event.transform;
+      console.log(event.transform);
+
+      ctx.clearRect(0, 0, width, height);
+
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(k, k);
+      ctx.lineWidth = 1 / k;
+      this.drawMap(ctx, path, projection);
+      ctx.restore();
+      // const { x, y, k } = event.transform;
+      // map.style("transform", `translate(${x}px, ${y}px)scale(${k})`);
+    };
   }
 
-  drawWaterLayer(map, path) {
-    const waterLayer = map.append("g").classed("water-layer", true);
-    waterLayer
-      .selectAll("path")
-      .data(
-        feature(topoData.massWater, topoData.massWater.objects.massWater)
-          .features
-      )
-      .enter()
-      .append("path")
-      .attr("d", path)
-      .style("fill", "#78b");
+  drawMap(ctx, path, projection) {
+    this.drawMapLayer(ctx, path);
+    this.drawWaterLayer(ctx, path);
+    this.drawRoadLayer(ctx, path);
+    this.drawTransportLayer(ctx, path, projection);
+    // this.drawPoiLayer(map, path, projection);
   }
 
-  drawRoadLayer(map, path) {
-    const roadLayer = map.append("g").classed("road-layer", true);
-    roadLayer
-      .selectAll("path")
-      .data(
-        feature(
-          topoData.massRoadsMajor,
-          topoData.massRoadsMajor.objects.massRoadsMajor
-        ).features
+  drawMapLayer(ctx, path) {
+    ctx.beginPath();
+    path(feature(topoData.massPoly, topoData.massPoly.objects.massPoly));
+    ctx.fillStyle = "#ddd";
+    ctx.fill();
+    ctx.strokeStyle = "#777";
+    ctx.stroke();
+  }
+
+  drawWaterLayer(ctx, path) {
+    ctx.beginPath();
+    path(feature(topoData.massWater, topoData.massWater.objects.massWater));
+    ctx.fillStyle = "#78b";
+    ctx.fill();
+  }
+
+  drawRoadLayer(ctx, path) {
+    ctx.beginPath();
+    path(
+      feature(
+        topoData.massRoadsMajor,
+        topoData.massRoadsMajor.objects.massRoadsMajor
       )
-      .enter()
-      .append("path")
-      .attr("d", path)
-      .attr("stroke", "#999")
-      .attr("stroke-width", 1)
-      .attr("vector-effect", "non-scaling-stroke")
-      .attr("fill", "transparent");
+    );
+    ctx.strokeStyle = "#999";
+    ctx.stroke();
   }
 
   // Draw subway lines
-  drawTransportLayer(map, path, projection) {
-    const transportLayer = map.append("g").classed("transport-layer", true);
-    transportLayer
-      .selectAll("path")
-      .data(
-        feature(topoData.mbtaLines, topoData.mbtaLines.objects.mbtaLines)
-          .features
-      )
-      .enter()
-      .append("path")
-      .attr("d", path)
-      .attr("stroke", d => d.properties.LINE)
-      .attr("stroke-width", 5)
-      .attr("stroke-opacity", 0.6)
-      .attr("stroke-dasharray", 10)
-      .attr("vector-effect", "non-scaling-stroke")
-      .attr("fill", "transparent");
+  drawTransportLayer(ctx, path, projection) {
+    const prevLineWidth = ctx.lineWidth;
+    ctx.beginPath();
+    path(feature(topoData.mbtaLines, topoData.mbtaLines.objects.mbtaLines));
+    ctx.strokeStyle = "#333";
+    ctx.lineWidth = 5 * prevLineWidth;
+    ctx.setLineDash([10, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
 
-    transportLayer
-      .selectAll("circle")
-      .data(
-        feature(
-          topoData.mbtaStations,
-          topoData.mbtaStations.objects.mbtaStations
-        ).features
-      )
-      .enter()
-      .append("circle")
-      .attr("cx", d => projection(d.geometry.coordinates)[0])
-      .attr("cy", d => projection(d.geometry.coordinates)[1])
-      .attr("r", "6px")
-      .attr("fill", d => d.properties.LINE)
-      .attr("stroke", "#333")
-      .attr("stroke-width", 3)
-      .style("cursor", "pointer")
-      .on("click", d => {
-        console.log(d);
-        this.setState({
-          info: {
-            name: d.properties.STATION,
-            description,
-            coords: d.geometry.coordinates
-          }
-        });
-      });
+    ctx.strokeStyle = "#333";
+    ctx.lineWidth = 3 * prevLineWidth;
+    const stationPointCreator = geoCircle().radius(0.0007 * prevLineWidth);
+
+    feature(
+      topoData.mbtaStations,
+      topoData.mbtaStations.objects.mbtaStations
+    ).features.forEach(station => {
+      ctx.fillStyle = station.properties.LINE;
+      ctx.beginPath();
+      path(stationPointCreator.center(station.geometry.coordinates)());
+      ctx.fill();
+      ctx.stroke();
+    });
+
+    ctx.lineWidth = prevLineWidth;
+
+    // const transportLayer = map.append("g").classed("transport-layer", true);
+    // transportLayer
+    //   .selectAll("path")
+    //   .data(
+    //     feature(topoData.mbtaLines, topoData.mbtaLines.objects.mbtaLines)
+    //       .features
+    //   )
+    //   .enter()
+    //   .append("path")
+    //   .attr("d", path)
+    //   .attr("stroke", d => d.properties.LINE)
+    //   .attr("stroke-width", 5)
+    //   .attr("stroke-opacity", 0.6)
+    //   .attr("stroke-dasharray", 10)
+    //   .attr("vector-effect", "non-scaling-stroke")
+    //   .attr("fill", "transparent");
+
+    // transportLayer
+    //   .selectAll("circle")
+    //   .data(
+    //     feature(
+    //       topoData.mbtaStations,
+    //       topoData.mbtaStations.objects.mbtaStations
+    //     ).features
+    //   )
+    //   .enter()
+    //   .append("circle")
+    //   .attr("cx", d => projection(d.geometry.coordinates)[0])
+    //   .attr("cy", d => projection(d.geometry.coordinates)[1])
+    //   .attr("r", "6px")
+    //   .attr("fill", d => d.properties.LINE)
+    //   .attr("stroke", "#333")
+    //   .attr("stroke-width", 3)
+    //   .style("cursor", "pointer")
+    //   .on("click", d => {
+    //     console.log(d);
+    //     this.setState({
+    //       info: {
+    //         name: d.properties.STATION,
+    //         description,
+    //         coords: d.geometry.coordinates
+    //       }
+    //     });
+    //   });
   }
 
   drawPoiLayer(map, path, projection) {
@@ -189,7 +214,7 @@ class Map extends React.Component {
 
   render() {
     return [
-      <svg className="map" ref={this.mapRef} />,
+      <canvas className="map-canvas" ref={this.mapRef} />,
       <MapInfo info={this.state.info} />
     ];
   }
